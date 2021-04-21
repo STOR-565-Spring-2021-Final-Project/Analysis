@@ -10,6 +10,7 @@ library(e1071)
 library(caret)
 library(rpart)
 library(doMC) 
+library(popbio)
 registerDoMC(cores = 11) 
 ```
 
@@ -25,6 +26,21 @@ test <- dat[-train_ind, ]
 
 ```{r}
 #visualization
+library(popbio)
+logi.hist.plot(dat$ExitRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+title("Exitrate vs empirical probability of Revenue")
+logi.hist.plot(dat$BounceRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+title("Bouncerate vs empirical probability of Revenue")
+logi.hist.plot(dat$ProductRelated_Duration,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+title("ProductRelated_Duration vs empirical probability of Revenue")
+logi.hist.plot(dat$ProductRelated,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+title("ProductRelated vs empirical probability of Revenue")
+
+mosaicplot(Region~Revenue, data=dat)
+#region seems to be unimportant on its own
+mosaicplot(VisitorType~Revenue, data=dat)
+```
+
 
 #class priors
 print(paste("Prior probability of Revenue=TRUE: ", sum(dat$Revenue==TRUE)/nrow(dat)))
