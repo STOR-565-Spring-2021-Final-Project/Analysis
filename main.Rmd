@@ -7,7 +7,10 @@ output: html_notebook
 #libraries
 library(MASS)
 library(e1071)
-
+library(caret)
+library(rpart)
+library(doMC) 
+registerDoMC(cores = 11) 
 ```
 
 
@@ -27,10 +30,29 @@ test <- dat[-train_ind, ]
 print(paste("Prior probability of Revenue=TRUE: ", sum(dat$Revenue==TRUE)/nrow(dat)))
 print(paste("Prior probability of Revenue=FALSE: ", sum(dat$Revenue==FALSE)/nrow(dat)))
 ```
+```{r}
+train.control <- trainControl(method = "cv", number = 10)
+```
+
 
 ```{r}
+tunegrid=data.frame(C=c(0.25, 0.5, 1,5,8,12,100))
+# Train the model
+model.cvsvm <- train(factor(Revenue) ~., data = dat, method = "svmLinear",
+               trControl = train.control, tuneGrid = tunegrid)
+# Summarize the results
+print(model.cvsvm)
+
+model.cvtree <- train(factor(Revenue) ~ ., data = dat, method = "rpart",
+                      trControl = train.control)
+print(model.cvtree)
+```
+
+
+```{r}
+
 #SVM WIP
-model_svm = svm(factor(Revenue) ~ BounceRates+ExitRates, data=train)
+model_svm = svm(factor(Revenue) ~ ., data=train, cost = 5, kernel = "linear")
 
 predictions_svm = predict(model_svm, test)
 table(predictions_svm, test[["Revenue"]])
