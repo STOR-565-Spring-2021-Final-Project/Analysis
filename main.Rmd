@@ -1,0 +1,37 @@
+---
+title: "Analysis of Shopping Data"
+author: "Shilong Dai, Patrick Schmitt, Puyao Ge"
+output: html_notebook
+---
+```{r, echo=T, results="hide"}
+#libraries
+library(MASS)
+library(e1071)
+
+```
+
+
+```{r}
+dat <- read.csv("./online_shoppers_intention.csv")
+set.seed(100)
+train_size <- floor(0.75 * nrow(dat))
+train_ind <- sample(seq_len(nrow(dat)), size = train_size)
+train <- dat[train_ind, ]
+test <- dat[-train_ind, ]
+```
+
+```{r}
+#visualization
+
+#class priors
+print(paste("Prior probability of Revenue=TRUE: ", sum(dat$Revenue==TRUE)/nrow(dat)))
+print(paste("Prior probability of Revenue=FALSE: ", sum(dat$Revenue==FALSE)/nrow(dat)))
+```
+
+```{r}
+#SVM WIP
+model_svm = svm(factor(Revenue) ~ BounceRates+ExitRates, data=train)
+
+predictions_svm = predict(model_svm, test)
+table(predictions_svm, test[["Revenue"]])
+```
