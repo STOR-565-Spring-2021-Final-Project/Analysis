@@ -22,6 +22,8 @@ train_size <- floor(0.75 * nrow(dat))
 train_ind <- sample(seq_len(nrow(dat)), size = train_size)
 train <- dat[train_ind, ]
 test <- dat[-train_ind, ]
+
+head(train)
 ```
 
 ```{r}
@@ -35,17 +37,25 @@ logi.hist.plot(dat$ProductRelated_Duration,dat$Revenue,boxp=FALSE,type="hist",co
 title("ProductRelated_Duration vs empirical probability of Revenue")
 logi.hist.plot(dat$ProductRelated,dat$Revenue,boxp=FALSE,type="hist",col="gray")
 title("ProductRelated vs empirical probability of Revenue")
+logi.hist.plot(dat$SpecialDay, dat$Revenue, boxp = FALSE, type="hist", col="gray")
 
 mosaicplot(Region~Revenue, data=dat)
 #region seems to be unimportant on its own
 mosaicplot(VisitorType~Revenue, data=dat)
+mosaicplot(TrafficType~Revenue, data=dat)
+mosaicplot(Month~Revenue, data=dat)
+```
+```{r}
+
 ```
 
 
 #class priors
+```{r}
 print(paste("Prior probability of Revenue=TRUE: ", sum(dat$Revenue==TRUE)/nrow(dat)))
 print(paste("Prior probability of Revenue=FALSE: ", sum(dat$Revenue==FALSE)/nrow(dat)))
 ```
+
 ```{r}
 train.control <- trainControl(method = "cv", number = 10)
 ```
@@ -58,10 +68,6 @@ model.cvsvm <- train(factor(Revenue) ~., data = train, method = "svmLinear",
                trControl = train.control, tuneGrid = tunegrid)
 # Summarize the results
 print(model.cvsvm)
-
-model.cvtree <- train(factor(Revenue) ~ ., data = train, method = "rpart",
-                      trControl = train.control)
-print(model.cvtree)
 ```
 
 
