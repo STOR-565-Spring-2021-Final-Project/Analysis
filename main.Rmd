@@ -17,6 +17,11 @@ registerDoMC(cores = 11)
 
 ```{r}
 dat <- read.csv("./online_shoppers_intention.csv")
+dat$OperatingSystems <- as.factor(dat$OperatingSystems)
+dat$Browser <- as.factor(dat$Browser)
+dat$Region <- as.factor(dat$Region)
+dat$TrafficType <- as.factor(dat$TrafficType)
+dat$Weekend <- as.factor(dat$Weekend)
 set.seed(100)
 train_size <- floor(0.75 * nrow(dat))
 train_ind <- sample(seq_len(nrow(dat)), size = train_size)
@@ -28,7 +33,6 @@ head(train)
 
 ```{r}
 #visualization
-library(popbio)
 logi.hist.plot(dat$ExitRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
 title("Exitrate vs empirical probability of Revenue")
 logi.hist.plot(dat$BounceRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
@@ -62,7 +66,7 @@ train.control <- trainControl(method = "cv", number = 10)
 
 
 ```{r}
-tunegrid=data.frame(C=c(0.25, 0.5, 1,5,8,12,100))
+tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
 # Train the model
 model.cvsvm <- train(factor(Revenue) ~., data = train, method = "svmLinear",
                trControl = train.control, tuneGrid = tunegrid)
@@ -72,9 +76,9 @@ print(model.cvsvm)
 
 
 ```{r}
-
 #SVM WIP
-model_svm = svm(factor(Revenue) ~ ., data=train, cost = 1, kernel = "linear")
+model_svm = svm(factor(Revenue) ~ ., data=train, cost = 0.25, kernel = "linear")
+print(model_svm)
 
 predictions_svm = predict(model_svm, test)
 table(predictions_svm, test[["Revenue"]])
