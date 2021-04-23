@@ -11,6 +11,9 @@ library(caret)
 library(rpart)
 library(doMC) 
 library(popbio)
+library(ggplot2)
+library(GGally)
+library(ggridges)
 registerDoMC(cores = 11) 
 ```
 
@@ -42,6 +45,9 @@ title("ProductRelated_Duration vs empirical probability of Revenue")
 logi.hist.plot(dat$ProductRelated,dat$Revenue,boxp=FALSE,type="hist",col="gray")
 title("ProductRelated vs empirical probability of Revenue")
 logi.hist.plot(dat$SpecialDay, dat$Revenue, boxp = FALSE, type="hist", col="gray")
+title("SpecialDay vs empirical probability of Revenue")
+logi.hist.plot(dat$PageValues,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+title("Page Values vs empirical probability of Revenue")
 
 mosaicplot(Region~Revenue, data=dat)
 #region seems to be unimportant on its own
@@ -49,16 +55,125 @@ mosaicplot(VisitorType~Revenue, data=dat)
 mosaicplot(TrafficType~Revenue, data=dat)
 mosaicplot(Month~Revenue, data=dat)
 ```
-```{r}
-
-```
-
 
 #class priors
 ```{r}
 print(paste("Prior probability of Revenue=TRUE: ", sum(dat$Revenue==TRUE)/nrow(dat)))
 print(paste("Prior probability of Revenue=FALSE: ", sum(dat$Revenue==FALSE)/nrow(dat)))
 ```
+
+```{r}
+ggpairs(
+  data = dat,
+  title = "Pairwise Plot",
+  columns = c("BounceRates", "ExitRates", "PageValues"),
+  upper = list(continuous = "points"),
+  mapping = ggplot2::aes(color = Revenue),
+  legend = 1
+)
+```
+
+```{r}
+true_dat <- dat[dat$Revenue == "TRUE", ]
+monthTrafficTableT <- table(true_dat$Month, true_dat$TrafficType)
+ggplot(data = as.data.frame(monthTrafficTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+
+false_dat <- dat[dat$Revenue == "FALSE", ]
+monthTrafficTableF <- table(false_dat$Month, false_dat$TrafficType)
+ggplot(data = as.data.frame(monthTrafficTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+```
+```{r}
+regionTrafficTableT <- table(true_dat$Region, true_dat$TrafficType)
+regionTrafficTableF <- table(false_dat$Region, false_dat$TrafficType)
+
+ggplot(data = as.data.frame(regionTrafficTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+ggplot(data = as.data.frame(regionTrafficTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+```
+```{r}
+regionMonthTableT <- table(true_dat$Region, true_dat$Month)
+regionMonthTableF <- table(false_dat$Region, false_dat$Month)
+
+ggplot(data = as.data.frame(regionMonthTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+ggplot(data = as.data.frame(regionMonthTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+```
+```{r}
+ggplot(dat, aes(x = PageValues, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = PageValues, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = BounceRates, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = BounceRates, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = ExitRates, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = ExitRates, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = ProductRelated, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = ProductRelated, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = SpecialDay, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = SpecialDay, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+```
+
+```{r}
+dat_numerical <- dat[, -(11:18)]
+dat_pcs <- prcomp(dat_numerical, scale = FALSE)
+dat_pcs_sum <- summary(dat_pcs)
+print(as.data.frame(dat_pcs_sum$importance[, 1:5]))
+print(as.data.frame(dat_pcs$rotation))
+```
+
+```{r}
+dat_pcs_df.1 <-
+  data.frame(PC = rep("PC1", length(dat_pcs$x[, 1])),
+             Value = dat_pcs$x[, 1])
+dat_pcs_df.1 <-
+  cbind(dat["Revenue"], dat_pcs_df.1)
+
+dat_pcs_df.2 <-
+  data.frame(PC = rep("PC2", length(dat_pcs$x[, 2])),
+             Value = dat_pcs$x[, 2])
+dat_pcs_df.2 <-
+  cbind(dat["Revenue"], dat_pcs_df.2)
+
+dat_pcs_df.3 <-
+  data.frame(PC = rep("PC3", length(dat_pcs$x[, 3])),
+             Value = dat_pcs$x[, 3])
+dat_pcs_df.3 <-
+  cbind(dat["Revenue"], dat_pcs_df.3)
+
+dat_pcs_df <-
+  rbind(dat_pcs_df.1, dat_pcs_df.2, dat_pcs_df.3)
+
+# How to unfuck this
+ggplot(data = dat_pcs_df, aes(fill = Revenue)) + aes(x = Value) + geom_density() +
+  xlab("PC Value") + facet_grid(. ~ PC) + ggtitle("PC Score Distributions")
+```
+
+```{r}
+dat_pcs_pair_df <- dat_pcs_df[dat_pcs_df$PC == "PC1", c(1, 3)]
+colnames(dat_pcs_pair_df)[2] <- "PC1"
+dat_pcs_pair_df <-
+  cbind(dat_pcs_pair_df, dat_pcs_df[dat_pcs_df$PC == "PC2", c(3)])
+colnames(dat_pcs_pair_df)[3] <- "PC2"
+dat_pcs_pair_df <-
+  cbind(dat_pcs_pair_df, dat_pcs_df[dat_pcs_df$PC == "PC3", c(3)])
+colnames(dat_pcs_pair_df)[4] <- "PC3"
+ggpairs(
+  data = dat_pcs_pair_df,
+  title = "Pairwise PC Plot",
+  columns = 2:4,
+  upper = list(continuous = "points"),
+  mapping = ggplot2::aes(color = Revenue),
+  legend = 1
+)
+```
+
+
 
 ```{r}
 train.control <- trainControl(method = "cv", number = 10)
