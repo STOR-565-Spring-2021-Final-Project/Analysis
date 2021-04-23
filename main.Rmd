@@ -25,13 +25,16 @@ dat$Browser <- as.factor(dat$Browser)
 dat$Region <- as.factor(dat$Region)
 dat$TrafficType <- as.factor(dat$TrafficType)
 dat$Weekend <- as.factor(dat$Weekend)
-set.seed(100)
-train_size <- floor(0.75 * nrow(dat))
-train_ind <- sample(seq_len(nrow(dat)), size = train_size)
-train <- dat[train_ind, ]
-test <- dat[-train_ind, ]
 
-head(train)
+
+dat$OperatingSystems <- factor(dat$OperatingSystems, labels = make.names(levels(dat$OperatingSystems)))
+dat$Browser <- factor(dat$Browser, labels = make.names(levels(dat$Browser)))
+dat$Region <- factor(dat$Region, labels = make.names(levels(dat$Region)))
+dat$TrafficType <- factor(dat$TrafficType, labels = make.names(levels(dat$TrafficType)))
+dat$Weekend <- factor(dat$Weekend, labels = make.names(levels(dat$Weekend)))
+
+
+set.seed(100)
 ```
 
 ```{r}
@@ -72,6 +75,12 @@ ggpairs(
   legend = 1
 )
 ```
+```{r}
+dat$ProductRelated_Duration <- log(dat$ProductRelated_Duration + 1)
+dat$ProductRelated <- log(dat$ProductRelated + 1)
+dat$PageValues <- log(dat$PageValues + 1)
+```
+
 
 ```{r}
 true_dat <- dat[dat$Revenue == "TRUE", ]
@@ -129,20 +138,20 @@ print(as.data.frame(dat_pcs$rotation))
 
 ```{r}
 dat_pcs_df.1 <-
-  data.frame(PC = rep("PC1", length(dat_pcs$x[, 1])),
-             Value = dat_pcs$x[, 1])
+  data.frame(PC = rep("PC4", length(dat_pcs$x[, 4])),
+             Value = dat_pcs$x[, 4])
 dat_pcs_df.1 <-
   cbind(dat["Revenue"], dat_pcs_df.1)
 
 dat_pcs_df.2 <-
-  data.frame(PC = rep("PC2", length(dat_pcs$x[, 2])),
-             Value = dat_pcs$x[, 2])
+  data.frame(PC = rep("PC5", length(dat_pcs$x[, 5])),
+             Value = dat_pcs$x[, 5])
 dat_pcs_df.2 <-
   cbind(dat["Revenue"], dat_pcs_df.2)
 
 dat_pcs_df.3 <-
-  data.frame(PC = rep("PC3", length(dat_pcs$x[, 3])),
-             Value = dat_pcs$x[, 3])
+  data.frame(PC = rep("PC6", length(dat_pcs$x[, 6])),
+             Value = dat_pcs$x[, 6])
 dat_pcs_df.3 <-
   cbind(dat["Revenue"], dat_pcs_df.3)
 
@@ -155,38 +164,79 @@ ggplot(data = dat_pcs_df, aes(fill = Revenue)) + aes(x = Value) + geom_density()
 ```
 
 ```{r}
-dat_pcs_pair_df <- dat_pcs_df[dat_pcs_df$PC == "PC1", c(1, 3)]
-colnames(dat_pcs_pair_df)[2] <- "PC1"
-dat_pcs_pair_df <-
-  cbind(dat_pcs_pair_df, dat_pcs_df[dat_pcs_df$PC == "PC2", c(3)])
-colnames(dat_pcs_pair_df)[3] <- "PC2"
-dat_pcs_pair_df <-
-  cbind(dat_pcs_pair_df, dat_pcs_df[dat_pcs_df$PC == "PC3", c(3)])
-colnames(dat_pcs_pair_df)[4] <- "PC3"
+pcs <- 10
+
+dat_pcs_pair_df <- data.frame(dat_pcs$x[, 1:10])
+dat_pcs_pair_df <- cbind(dat_pcs_pair_df, dat["Revenue"])
+
+head(dat_pcs_pair_df)
+png(filename="bruteforce.png", width=4096, height=4096)
 ggpairs(
   data = dat_pcs_pair_df,
   title = "Pairwise PC Plot",
-  columns = 2:4,
+  columns = 1:10,
   upper = list(continuous = "points"),
   mapping = ggplot2::aes(color = Revenue),
   legend = 1
 )
+dev.off()
+```
+
+```{r}
+train_size <- floor(0.75 * nrow(dat))
+train_ind <- sample(seq_len(nrow(dat)), size = train_size)
+train <- dat[train_ind, ]
+test <- dat[-train_ind, ]
+
+train$Revenue <- as.factor(train$Revenue)
+train$Revenue <- factor(train$Revenue, labels = make.names(levels(train$Revenue)))
+
+test$Revenue <- as.factor(test$Revenue)
+test$Revenue <- factor(test$Revenue, labels = make.names(levels(test$Revenue)))
+
+train_numerical <- train[, -(11:18)]
+train_pcs <- prcomp(train_numerical, scale = FALSE)
+
+adopted_train <- train[, -(3:10)]
+adopted_train$Administrative <- train_pcs$x[, 1]
+adopted_train$Administrative_Duration <- train_pcs$x[, 2]
+colnames(adopted_test)[1] <- "PC1"
+colnames(adopted_test)[2] <- "PC2"
+
+head(adopted_train)
+```
+
+```{r}
+test_pcs <- predict(train_pcs, test)
+
+adopted_test <- test[, -(3:10)]
+adopted_test$Administrative <- test_pcs[, 1]
+adopted_test$Administrative_Duration <- test_pcs[, 2]
+colnames(adopted_test)[1] <- "PC1"
+colnames(adopted_test)[2] <- "PC2"
+head(adopted_test)
 ```
 
 
 
 ```{r}
 train.control <- trainControl(method = "cv", number = 10)
+
 ```
 
 
 ```{r}
 tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
 # Train the model
-model.cvsvm <- train(factor(Revenue) ~., data = train, method = "svmLinear",
-               trControl = train.control, tuneGrid = tunegrid)
+model.cvsvm <- train(Revenue~., data = train, method = "svmLinear",
+               trControl = train.control, tuneGrid = tunegrid, metric = "Kappa")
 # Summarize the results
 print(model.cvsvm)
+```
+
+```{r}
+model.glm <- train(Revenue~., data = train, method = "glm", trControl = train.control, metric = "Kappa")
+print(model.glm)
 ```
 
 
