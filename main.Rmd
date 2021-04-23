@@ -56,7 +56,7 @@ for (i in c(1:10)) {
 
 ```{r}
 for (i in c(1:10)) {
-  hist(as.vector(log(dat[,i])), main=colnames(dat)[i])
+  hist(dat[,i], main=colnames(dat)[i])
 }
 ```
 
@@ -144,6 +144,10 @@ ggplot(dat, aes(x = ProductRelated, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = ProductRelated, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
+ggplot(dat, aes(x = ProductRelated_Duration, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = ProductRelated_Duration, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
 ggplot(dat, aes(x = SpecialDay, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = SpecialDay, y = Month, fill = Revenue)) +
@@ -216,6 +220,20 @@ head(adopted_train)
 ```
 
 ```{r}
+png(filename="bruteforce4.png", width=4096, height=4096)
+ggpairs(
+  data = adopted_train,
+  title = "Pairwise PC Plot",
+  columns = 1:10,
+  upper = list(continuous = "points"),
+  mapping = ggplot2::aes(color = Revenue),
+  legend = 1
+)
+dev.off()
+```
+
+
+```{r}
 test_pcs <- predict(train_pcs, test)
 
 adopted_test <- test[, 1:18]
@@ -235,14 +253,14 @@ train.control <- trainControl(method = "cv", number = 10)
 ```{r}
 tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
 # Train the model
-model.cvsvm <- train(Revenue~PC3+PC2+Month+TrafficType, data = adopted_train, method = "svmLinear",
+model.cvsvm <- train(Revenue~PC1+PC4, data = adopted_train, method = "svmLinear",
                trControl = train.control, tuneGrid = tunegrid, metric = "Kappa")
 # Summarize the results
 print(model.cvsvm)
 ```
 
 ```{r}
-model.knn <- train(Revenue~PC2+PC3, data = adopted_train, method = "knn", trControl = train.control, metric = "Kappa")
+model.knn <- train(Revenue~PC1+PC4, data = adopted_train, method = "knn", trControl = train.control, metric = "Kappa")
 
 predict_knn <- predict(model.knn, adopted_test)
 cm.knn <-
@@ -256,9 +274,9 @@ cm.knn
 cm.knn$byClass
 ```
 ```{r}
-model.lda <- train(Revenue~PageValues+ProductRelated_Duration, data = train, method = "lda", trControl = train.control, metric = "Kappa")
+model.lda <- train(Revenue~PC1+PC4, data = adopted_train, method = "lda", trControl = train.control, metric = "Kappa")
 
-predict_lda <- predict(model.lda, test)
+predict_lda <- predict(model.lda, adopted_test)
 cm.lda <-
   confusionMatrix(
     factor(predict_lda),
