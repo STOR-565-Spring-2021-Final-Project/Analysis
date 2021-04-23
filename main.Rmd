@@ -38,6 +38,30 @@ set.seed(100)
 ```
 
 ```{r}
+for (i in c(1:10)) {
+  hist(as.vector(dat[,i]), main=colnames(dat)[i])
+}
+```
+```{r}
+for (i in c(1:10)) {
+  hist(as.vector(log(dat[,i])), main=colnames(dat)[i])
+}
+```
+
+```{r}
+for (i in c(1:10)) {
+  dat[,i] = log(dat[,i]+1)
+}
+```
+
+```{r}
+for (i in c(1:10)) {
+  hist(as.vector(log(dat[,i])), main=colnames(dat)[i])
+}
+```
+
+
+```{r}
 #visualization
 logi.hist.plot(dat$ExitRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
 title("Exitrate vs empirical probability of Revenue")
@@ -66,19 +90,26 @@ print(paste("Prior probability of Revenue=FALSE: ", sum(dat$Revenue==FALSE)/nrow
 ```
 
 ```{r}
+png(filename="bruteforce3.png", width=4096, height=4096)
 ggpairs(
   data = dat,
   title = "Pairwise Plot",
-  columns = c("BounceRates", "ExitRates", "PageValues"),
+  columns = colnames(dat)[1:10],
   upper = list(continuous = "points"),
   mapping = ggplot2::aes(color = Revenue),
   legend = 1
 )
+dev.off()
+
 ```
+
+
 ```{r}
 dat$ProductRelated_Duration <- log(dat$ProductRelated_Duration + 1)
 dat$ProductRelated <- log(dat$ProductRelated + 1)
 dat$PageValues <- log(dat$PageValues + 1)
+dat$Administrative <- log(dat$Administrative + 1)
+dat$
 ```
 
 
@@ -137,30 +168,19 @@ print(as.data.frame(dat_pcs$rotation))
 ```
 
 ```{r}
-dat_pcs_df.1 <-
-  data.frame(PC = rep("PC4", length(dat_pcs$x[, 4])),
-             Value = dat_pcs$x[, 4])
-dat_pcs_df.1 <-
-  cbind(dat["Revenue"], dat_pcs_df.1)
-
-dat_pcs_df.2 <-
-  data.frame(PC = rep("PC5", length(dat_pcs$x[, 5])),
-             Value = dat_pcs$x[, 5])
-dat_pcs_df.2 <-
-  cbind(dat["Revenue"], dat_pcs_df.2)
-
-dat_pcs_df.3 <-
-  data.frame(PC = rep("PC6", length(dat_pcs$x[, 6])),
-             Value = dat_pcs$x[, 6])
-dat_pcs_df.3 <-
-  cbind(dat["Revenue"], dat_pcs_df.3)
-
-dat_pcs_df <-
-  rbind(dat_pcs_df.1, dat_pcs_df.2, dat_pcs_df.3)
+dat_pcs_df <- data.frame()
+for(i in 1:10) {
+  frame <- data.frame(PC = rep(paste0("PC", i), length(dat_pcs$x[, i])),
+             Value = dat_pcs$x[, i])
+  frame <- cbind(dat["Revenue"], frame)
+  dat_pcs_df <- rbind(dat_pcs_df, frame)
+}
 
 # How to unfuck this
-ggplot(data = dat_pcs_df, aes(fill = Revenue)) + aes(x = Value) + geom_density() +
-  xlab("PC Value") + facet_grid(. ~ PC) + ggtitle("PC Score Distributions")
+png(filename="bruteforce2.png", width=4096, height=4096)
+ggplot(data = dat_pcs_df, aes(fill = Revenue)) + aes(x = Value) + geom_boxplot() +
+  xlab("PC Value") + facet_grid(PC ~ .) + ggtitle("PC Score Distributions")
+dev.off()
 ```
 
 ```{r}
@@ -235,7 +255,7 @@ print(model.cvsvm)
 ```
 
 ```{r}
-model.glm <- train(Revenue~., data = train, method = "glm", trControl = train.control, metric = "Kappa")
+model.glm <- train(Revenue~., data = train, method = "rpart", trControl = train.control, metric = "Kappa")
 print(model.glm)
 ```
 
