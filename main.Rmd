@@ -25,6 +25,7 @@ dat$Browser <- as.factor(dat$Browser)
 dat$Region <- as.factor(dat$Region)
 dat$TrafficType <- as.factor(dat$TrafficType)
 dat$Weekend <- as.factor(dat$Weekend)
+dat$VisitorType <- as.factor(dat$VisitorType)
 
 
 dat$OperatingSystems <- factor(dat$OperatingSystems, labels = make.names(levels(dat$OperatingSystems)))
@@ -32,6 +33,7 @@ dat$Browser <- factor(dat$Browser, labels = make.names(levels(dat$Browser)))
 dat$Region <- factor(dat$Region, labels = make.names(levels(dat$Region)))
 dat$TrafficType <- factor(dat$TrafficType, labels = make.names(levels(dat$TrafficType)))
 dat$Weekend <- factor(dat$Weekend, labels = make.names(levels(dat$Weekend)))
+dat$VisitorType <- factor(dat$VisitorType, labels = make.names(levels(dat$VisitorType)))
 
 
 set.seed(100)
@@ -128,29 +130,55 @@ ggplot(data = as.data.frame(regionMonthTableT), aes(x = Var1, y = Var2, fill = F
 ggplot(data = as.data.frame(regionMonthTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
 ```
 ```{r}
+visitorMonthTableT <- table(true_dat$VisitorType, true_dat$Month)
+visitorMonthTableF <- table(false_dat$VisitorType, false_dat$Month)
+
+ggplot(data = as.data.frame(regionMonthTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+ggplot(data = as.data.frame(regionMonthTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
+```
+
+
+```{r}
 ggplot(dat, aes(x = PageValues, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = PageValues, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
+ggplot(dat, aes(x = PageValues, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
 ggplot(dat, aes(x = BounceRates, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = BounceRates, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
+ggplot(dat, aes(x = BounceRates, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
 ggplot(dat, aes(x = ExitRates, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = ExitRates, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
+ggplot(dat, aes(x = ExitRates, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
 ggplot(dat, aes(x = ProductRelated, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = ProductRelated, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
+ggplot(dat, aes(x = ProductRelated, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
 ggplot(dat, aes(x = ProductRelated_Duration, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = ProductRelated_Duration, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
+ggplot(dat, aes(x = ProductRelated_Duration, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
 ggplot(dat, aes(x = SpecialDay, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ggplot(dat, aes(x = SpecialDay, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat, aes(x = SpecialDay, y = VisitorType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ```
 
@@ -286,6 +314,21 @@ cm.lda <-
   )
 cm.lda
 cm.lda$byClass
+```
+
+```{r}
+model.tree <- train(Revenue~PC1+PC4+Month+TrafficType+VisitorType, data = adopted_train, method = "rpart", trControl = train.control, metric = "Kappa")
+
+predict_tree <- predict(model.tree, adopted_test)
+cm.tree <-
+  confusionMatrix(
+    factor(predict_tree),
+    factor(adopted_test$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.tree
+cm.tree$byClass
 ```
 
 
