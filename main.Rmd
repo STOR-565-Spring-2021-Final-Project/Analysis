@@ -105,15 +105,6 @@ dev.off()
 
 
 ```{r}
-dat$ProductRelated_Duration <- log(dat$ProductRelated_Duration + 1)
-dat$ProductRelated <- log(dat$ProductRelated + 1)
-dat$PageValues <- log(dat$PageValues + 1)
-dat$Administrative <- log(dat$Administrative + 1)
-dat$
-```
-
-
-```{r}
 true_dat <- dat[dat$Revenue == "TRUE", ]
 monthTrafficTableT <- table(true_dat$Month, true_dat$TrafficType)
 ggplot(data = as.data.frame(monthTrafficTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
@@ -217,11 +208,9 @@ test$Revenue <- factor(test$Revenue, labels = make.names(levels(test$Revenue)))
 train_numerical <- train[, -(11:18)]
 train_pcs <- prcomp(train_numerical, scale = FALSE)
 
-adopted_train <- train[, -(3:10)]
-adopted_train$Administrative <- train_pcs$x[, 1]
-adopted_train$Administrative_Duration <- train_pcs$x[, 2]
-colnames(adopted_test)[1] <- "PC1"
-colnames(adopted_test)[2] <- "PC2"
+adopted_train <- train[, 1:18]
+adopted_train[, 1:10] <- train_pcs$x
+colnames(adopted_train)[1:10] <- paste0("PC", 1:10)
 
 head(adopted_train)
 ```
@@ -229,11 +218,9 @@ head(adopted_train)
 ```{r}
 test_pcs <- predict(train_pcs, test)
 
-adopted_test <- test[, -(3:10)]
-adopted_test$Administrative <- test_pcs[, 1]
-adopted_test$Administrative_Duration <- test_pcs[, 2]
-colnames(adopted_test)[1] <- "PC1"
-colnames(adopted_test)[2] <- "PC2"
+adopted_test <- test[, 1:18]
+adopted_test[, 1:10] <- test_pcs
+colnames(adopted_test)[1:10] <- paste0("PC", 1:10)
 head(adopted_test)
 ```
 
@@ -248,23 +235,55 @@ train.control <- trainControl(method = "cv", number = 10)
 ```{r}
 tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
 # Train the model
-model.cvsvm <- train(Revenue~., data = train, method = "svmLinear",
+model.cvsvm <- train(Revenue~PC3+PC2+Month+TrafficType, data = adopted_train, method = "svmLinear",
                trControl = train.control, tuneGrid = tunegrid, metric = "Kappa")
 # Summarize the results
 print(model.cvsvm)
 ```
 
 ```{r}
-model.glm <- train(Revenue~., data = train, method = "rpart", trControl = train.control, metric = "Kappa")
-print(model.glm)
+model.knn <- train(Revenue~PC2+PC3, data = adopted_train, method = "knn", trControl = train.control, metric = "Kappa")
+
+predict_knn <- predict(model.knn, adopted_test)
+cm.knn <-
+  confusionMatrix(
+    factor(predict_knn),
+    factor(adopted_test$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.knn
+cm.knn$byClass
+```
+```{r}
+model.lda <- train(Revenue~PageValues+ProductRelated_Duration, data = train, method = "lda", trControl = train.control, metric = "Kappa")
+
+predict_lda <- predict(model.lda, test)
+cm.lda <-
+  confusionMatrix(
+    factor(predict_lda),
+    factor(adopted_test$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.lda
+cm.lda$byClass
 ```
 
 
 ```{r}
 #SVM WIP
-model_svm = svm(factor(Revenue) ~ ., data=train, cost = 0.25, kernel = "linear")
-print(model_svm)
+#model_svm = svm(Revenue~PC2+PC3, data=adopted_train, cost = 5, kernel = "linear")
+#print(model_svm)
 
-predictions_svm = predict(model_svm, test)
-table(predictions_svm, test[["Revenue"]])
+predict_svm <- predict(model.cvsvm, adopted_test)
+cm.svm <-
+  confusionMatrix(
+    factor(predict_svm),
+    factor(adopted_test$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.svm
+cm.svm$byClass
 ```
