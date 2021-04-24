@@ -14,6 +14,10 @@ library(popbio)
 library(ggplot2)
 library(GGally)
 library(ggridges)
+library(smotefamily)
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization
+library(glmnet)
 registerDoMC(cores = 11) 
 ```
 
@@ -46,17 +50,8 @@ for (i in c(1:10)) {
 ```
 ```{r}
 for (i in c(1:10)) {
-  hist(as.vector(log(dat[,i])), main=colnames(dat)[i])
-}
-```
-
-```{r}
-for (i in c(1:10)) {
   dat[,i] = log(dat[,i]+1)
 }
-```
-
-```{r}
 for (i in c(1:10)) {
   hist(dat[,i], main=colnames(dat)[i])
 }
@@ -64,7 +59,16 @@ for (i in c(1:10)) {
 
 
 ```{r}
-#visualization
+for (i in c(1:10)) {
+  dat[,i] = as.vector(scale(dat[, i]))
+}
+for (i in c(1:10)) {
+  hist(dat[,i], main=colnames(dat)[i])
+}
+```
+
+
+```{r}
 logi.hist.plot(dat$ExitRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
 title("Exitrate vs empirical probability of Revenue")
 logi.hist.plot(dat$BounceRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
@@ -226,6 +230,42 @@ dev.off()
 ```
 
 ```{r}
+k <- 2
+k_cluster_2 <-
+  kmeans(
+    dat_pcs$x,
+    centers = k,
+    nstart = 25,
+    iter.max = 1000
+  )
+# plots to compare
+fviz_2 <-
+  fviz_cluster(k_cluster_2, geom = "point", data = dat_pcs$x[, c(1, 5)]) + 
+  ggtitle("KMeans Clusters 10 PCs")
+
+print(fviz_2)
+```
+
+```{r}
+# Summarize results of clustering.
+dat_pcs_cluster_df <-
+  cbind(dat[, c(18)], k_cluster_2$cluster)
+dat_pcs_cluster_df <-as.data.frame(dat_pcs_cluster_df)
+colnames(dat_pcs_cluster_df) <- c("Revenue", "Cluster")
+dat_pcs_cluster_df[, 1] <- factor(dat_pcs_cluster_df[, 1])
+dat_pcs_cluster_df[, 2] <- factor(dat_pcs_cluster_df[, 2])
+
+cluster_bar_2 <-
+  ggplot(data = dat_pcs_cluster_df, aes(fill = Revenue)) + aes(x = Cluster) + 
+  geom_bar() + xlab("Cluster") + ylab("Count") + ggtitle("Clusters with 10 PCs")
+print(cluster_bar_2)
+```
+```{r}
+table(dat_pcs_cluster_df)
+```
+
+
+```{r}
 train_size <- floor(0.75 * nrow(dat))
 train_ind <- sample(seq_len(nrow(dat)), size = train_size)
 train <- dat[train_ind, ]
@@ -270,25 +310,65 @@ colnames(adopted_test)[1:10] <- paste0("PC", 1:10)
 head(adopted_test)
 ```
 
+```{r}
+# Dumy code categorical predictor variables
+train_mat <- model.matrix(Revenue~., adopted_train)[,-1]
+# Convert the outcome (class) to a numerical variable
+revenue_vec <- ifelse(adopted_train$Revenue == "TRUE.", 1, 0)
+```
+
+```{r}
+cv.lasso <- cv.glmnet(train_mat, revenue_vec, alpha = 1, family = "binomial")
+plot(cv.lasso)
+```
+```{r}
+coef(cv.lasso, cv.lasso$lambda.1se)
+coef(cv.lasso, cv.lasso$lambda.min)
+```
 
 
 ```{r}
 train.control <- trainControl(method = "cv", number = 10)
-
+train_pca <- adopted_train[, c(1:10, 18)]
+test_pca <- adopted_test[, c(1:10, 18)]
 ```
+
+```{r}
+oversample <- nrow(train_pca[train_pca$Revenue == "FALSE.", ])/nrow(train_pca[train_pca$Revenue == "TRUE.", ])
+
+train_pca_oversample <- SMOTE(train_pca[, 1:10], train_pca$Revenue, dup_size = oversample)$data
+colnames(train_pca_oversample)[11] = "Revenue"
+```
+
 
 
 ```{r}
 tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
 # Train the model
-model.cvsvm <- train(Revenue~PC1+PC4, data = adopted_train, method = "svmLinear",
+model.cvsvm <- train(Revenue~., data = train_pca, method = "svmLinear",
                trControl = train.control, tuneGrid = tunegrid, metric = "Kappa")
 # Summarize the results
 print(model.cvsvm)
+#SVM WIP
+#model_svm = svm(Revenue~., data=train_pca, cost = 0.5, kernel = "linear")
+#print(model_svm)
+
+predict_svm <- predict(model.cvsvm, adopted_test)
+cm.svm <-
+  confusionMatrix(
+    factor(predict_svm),
+    factor(adopted_test$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.svm
+cm.svm$byClass
 ```
 
 ```{r}
-model.knn <- train(Revenue~PC1+PC4, data = adopted_train, method = "knn", trControl = train.control, metric = "Kappa")
+model.knn <- train(Revenue~., data = train_pca, method = "knn", trControl = train.control, metric = "Kappa")
+
+print(model.knn)
 
 predict_knn <- predict(model.knn, adopted_test)
 cm.knn <-
@@ -302,7 +382,9 @@ cm.knn
 cm.knn$byClass
 ```
 ```{r}
-model.lda <- train(Revenue~PC1+PC4, data = adopted_train, method = "lda", trControl = train.control, metric = "Kappa")
+model.lda <- train(Revenue~., data = train_pca, method = "lda", trControl = train.control, metric = "Kappa")
+
+print(model.lda)
 
 predict_lda <- predict(model.lda, adopted_test)
 cm.lda <-
@@ -316,8 +398,11 @@ cm.lda
 cm.lda$byClass
 ```
 
+
 ```{r}
-model.tree <- train(Revenue~PC1+PC4+Month+TrafficType+VisitorType, data = adopted_train, method = "rpart", trControl = train.control, metric = "Kappa")
+model.tree <- train(Revenue~., data = train_pca, method = "rpart", trControl = train.control, metric = "Kappa")
+
+print(model.tree)
 
 predict_tree <- predict(model.tree, adopted_test)
 cm.tree <-
@@ -333,18 +418,18 @@ cm.tree$byClass
 
 
 ```{r}
-#SVM WIP
-#model_svm = svm(Revenue~PC2+PC3, data=adopted_train, cost = 5, kernel = "linear")
-#print(model_svm)
+model.qda <- qda(Revenue~., data = train_pca)
+print(model.qda)
 
-predict_svm <- predict(model.cvsvm, adopted_test)
-cm.svm <-
+predict_qda <- predict(model.qda, adopted_test)
+cm.qda <-
   confusionMatrix(
-    factor(predict_svm),
+    factor(predict_tree),
     factor(adopted_test$Revenue),
     dnn = c("Prediction", "Label"),
     positive="TRUE."
   )
-cm.svm
-cm.svm$byClass
+cm.qda
+cm.qda$byClass
 ```
+
