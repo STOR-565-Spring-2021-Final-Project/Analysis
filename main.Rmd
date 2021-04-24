@@ -334,18 +334,26 @@ test_pca <- adopted_test[, c(1:10, 18)]
 ```
 
 ```{r}
-oversample <- nrow(train_pca[train_pca$Revenue == "FALSE.", ])/nrow(train_pca[train_pca$Revenue == "TRUE.", ])
+train_filtered <- train_pca[, c(1, 3, 5, 11)]
+train_filtered$May <- ifelse(adopted_train$Month == "May", 1, 0)
+train_filtered$Nov <- ifelse(adopted_train$Month == "Nov", 1, 0)
+train_filtered$Traffic8 <- ifelse(adopted_train$TrafficType == "X8", 1, 0)
+train_filtered$Traffic16 <- ifelse(adopted_train$TrafficType == "X16", 1, 0)
+train_filtered$Returning <- ifelse(adopted_train$VisitorType == "Returning_Visitor", 1, 0)
 
-train_pca_oversample <- SMOTE(train_pca[, 1:10], train_pca$Revenue, dup_size = oversample)$data
-colnames(train_pca_oversample)[11] = "Revenue"
+test_filtered <- test_pca[, c(1, 3, 5, 11)]
+test_filtered$May <- ifelse(adopted_test$Month == "May", 1, 0)
+test_filtered$Nov <- ifelse(adopted_test$Month == "Nov", 1, 0)
+test_filtered$Traffic8 <- ifelse(adopted_test$TrafficType == "X8", 1, 0)
+test_filtered$Traffic16 <- ifelse(adopted_test$TrafficType == "X16", 1, 0)
+test_filtered$Returning <- ifelse(adopted_test$VisitorType == "Returning_Visitor", 1, 0)
 ```
-
 
 
 ```{r}
 tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
 # Train the model
-model.cvsvm <- train(Revenue~., data = train_pca, method = "svmLinear",
+model.cvsvm <- train(Revenue~., data = train_filtered, method = "svmLinear",
                trControl = train.control, tuneGrid = tunegrid, metric = "Kappa")
 # Summarize the results
 print(model.cvsvm)
@@ -353,11 +361,11 @@ print(model.cvsvm)
 #model_svm = svm(Revenue~., data=train_pca, cost = 0.5, kernel = "linear")
 #print(model_svm)
 
-predict_svm <- predict(model.cvsvm, adopted_test)
+predict_svm <- predict(model.cvsvm, test_filtered)
 cm.svm <-
   confusionMatrix(
     factor(predict_svm),
-    factor(adopted_test$Revenue),
+    factor(test_filtered$Revenue),
     dnn = c("Prediction", "Label"),
     positive="TRUE."
   )
@@ -366,15 +374,15 @@ cm.svm$byClass
 ```
 
 ```{r}
-model.knn <- train(Revenue~., data = train_pca, method = "knn", trControl = train.control, metric = "Kappa")
+model.knn <- train(Revenue~., data = train_filtered, method = "knn", trControl = train.control, metric = "Kappa")
 
 print(model.knn)
 
-predict_knn <- predict(model.knn, adopted_test)
+predict_knn <- predict(model.knn, test_filtered)
 cm.knn <-
   confusionMatrix(
     factor(predict_knn),
-    factor(adopted_test$Revenue),
+    factor(test_filtered$Revenue),
     dnn = c("Prediction", "Label"),
     positive="TRUE."
   )
@@ -382,15 +390,15 @@ cm.knn
 cm.knn$byClass
 ```
 ```{r}
-model.lda <- train(Revenue~., data = train_pca, method = "lda", trControl = train.control, metric = "Kappa")
+model.lda <- lda(Revenue~PC1+PC3+PC5, data = train_filtered)
 
 print(model.lda)
 
-predict_lda <- predict(model.lda, adopted_test)
+predict_lda <- predict(model.lda, test_filtered)$class
 cm.lda <-
   confusionMatrix(
     factor(predict_lda),
-    factor(adopted_test$Revenue),
+    factor(test_filtered$Revenue),
     dnn = c("Prediction", "Label"),
     positive="TRUE."
   )
@@ -400,15 +408,15 @@ cm.lda$byClass
 
 
 ```{r}
-model.tree <- train(Revenue~., data = train_pca, method = "rpart", trControl = train.control, metric = "Kappa")
+model.tree <- train(Revenue~., data = train_filtered, method = "rpart", trControl = train.control, metric = "Kappa")
 
 print(model.tree)
 
-predict_tree <- predict(model.tree, adopted_test)
+predict_tree <- predict(model.tree, test_filtered)
 cm.tree <-
   confusionMatrix(
     factor(predict_tree),
-    factor(adopted_test$Revenue),
+    factor(test_filtered$Revenue),
     dnn = c("Prediction", "Label"),
     positive="TRUE."
   )
@@ -418,18 +426,38 @@ cm.tree$byClass
 
 
 ```{r}
-model.qda <- qda(Revenue~., data = train_pca)
+model.qda <- qda(Revenue~PC1+PC3+PC5, data = train_filtered)
 print(model.qda)
 
-predict_qda <- predict(model.qda, adopted_test)
+predict_qda <- predict(model.qda, test_filtered)$class
 cm.qda <-
   confusionMatrix(
     factor(predict_tree),
-    factor(adopted_test$Revenue),
+    factor(test_filtered$Revenue),
     dnn = c("Prediction", "Label"),
     positive="TRUE."
   )
 cm.qda
 cm.qda$byClass
+```
+
+```{r}
+unique(train_filtered$Revenue)
+model.glm <- glm(Revenue~., data = train_filtered, family = "binomial")
+summary(model.glm)
+
+predict_glm <- predict(model.glm, test_filtered)
+predict_glm <- ifelse(predict_glm > 0, "TRUE.", "FALSE.")
+predict_glm <- as.factor(predict_glm)
+
+cm.glm <-
+  confusionMatrix(
+    factor(predict_glm),
+    factor(test_filtered$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.glm
+cm.glm$byClass
 ```
 
