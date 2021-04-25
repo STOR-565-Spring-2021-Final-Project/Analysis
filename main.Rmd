@@ -335,6 +335,7 @@ test_pca <- adopted_test[, c(1:10, 18)]
 
 ```{r}
 train_filtered <- train_pca[, c(1, 3, 5, 11)]
+train_numerical <- as.data.frame(train_filtered)
 train_filtered$May <- ifelse(adopted_train$Month == "May", 1, 0)
 train_filtered$Nov <- ifelse(adopted_train$Month == "Nov", 1, 0)
 train_filtered$Traffic8 <- ifelse(adopted_train$TrafficType == "X8", 1, 0)
@@ -353,7 +354,7 @@ test_filtered$Returning <- ifelse(adopted_test$VisitorType == "Returning_Visitor
 ```{r}
 tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
 # Train the model
-model.cvsvm <- train(Revenue~., data = train_filtered, method = "svmLinear",
+model.cvsvm <- train(Revenue~., data = train_numerical, method = "svmLinear",
                trControl = train.control, tuneGrid = tunegrid, metric = "Kappa")
 # Summarize the results
 print(model.cvsvm)
@@ -390,7 +391,7 @@ cm.knn
 cm.knn$byClass
 ```
 ```{r}
-model.lda <- lda(Revenue~PC1+PC3+PC5, data = train_filtered)
+model.lda <- lda(Revenue~., data = train_numerical)
 
 print(model.lda)
 
@@ -426,7 +427,7 @@ cm.tree$byClass
 
 
 ```{r}
-model.qda <- qda(Revenue~PC1+PC3+PC5, data = train_filtered)
+model.qda <- qda(Revenue~., data = train_numerical)
 print(model.qda)
 
 predict_qda <- predict(model.qda, test_filtered)$class
@@ -442,7 +443,6 @@ cm.qda$byClass
 ```
 
 ```{r}
-unique(train_filtered$Revenue)
 model.glm <- glm(Revenue~., data = train_filtered, family = "binomial")
 summary(model.glm)
 
