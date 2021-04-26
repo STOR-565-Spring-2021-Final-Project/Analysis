@@ -18,6 +18,7 @@ library(smotefamily)
 library(cluster)    # clustering algorithms
 library(factoextra) # clustering algorithms & visualization
 library(glmnet)
+library(FactoMineR)
 registerDoMC(cores = 11) 
 ```
 
@@ -49,56 +50,57 @@ for (i in c(1:10)) {
 }
 ```
 ```{r}
+dat_logged <- as.data.frame(dat)
 for (i in c(1:10)) {
-  dat[,i] = log(dat[,i]+1)
+  dat_logged[,i] = log(dat[,i]+1)
 }
 for (i in c(1:10)) {
-  hist(dat[,i], main=colnames(dat)[i])
-}
-```
-
-
-```{r}
-for (i in c(1:10)) {
-  dat[,i] = as.vector(scale(dat[, i]))
-}
-for (i in c(1:10)) {
-  hist(dat[,i], main=colnames(dat)[i])
+  hist(dat_logged[,i], main=colnames(dat_logged)[i])
 }
 ```
 
 
 ```{r}
-logi.hist.plot(dat$ExitRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+for (i in c(1:10)) {
+  dat_logged[,i] = as.vector(scale(dat_logged[, i]))
+}
+for (i in c(1:10)) {
+  hist(dat_logged[,i], main=colnames(dat_logged)[i])
+}
+```
+
+
+```{r}
+logi.hist.plot(dat_logged$ExitRates,dat_logged$Revenue,boxp=FALSE,type="hist",col="gray")
 title("Exitrate vs empirical probability of Revenue")
-logi.hist.plot(dat$BounceRates,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+logi.hist.plot(dat_logged$BounceRates,dat_logged$Revenue,boxp=FALSE,type="hist",col="gray")
 title("Bouncerate vs empirical probability of Revenue")
-logi.hist.plot(dat$ProductRelated_Duration,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+logi.hist.plot(dat_logged$ProductRelated_Duration,dat_logged$Revenue,boxp=FALSE,type="hist",col="gray")
 title("ProductRelated_Duration vs empirical probability of Revenue")
-logi.hist.plot(dat$ProductRelated,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+logi.hist.plot(dat_logged$ProductRelated,dat_logged$Revenue,boxp=FALSE,type="hist",col="gray")
 title("ProductRelated vs empirical probability of Revenue")
-logi.hist.plot(dat$SpecialDay, dat$Revenue, boxp = FALSE, type="hist", col="gray")
+logi.hist.plot(dat_logged$SpecialDay, dat_logged$Revenue, boxp = FALSE, type="hist", col="gray")
 title("SpecialDay vs empirical probability of Revenue")
-logi.hist.plot(dat$PageValues,dat$Revenue,boxp=FALSE,type="hist",col="gray")
+logi.hist.plot(dat_logged$PageValues,dat_logged$Revenue,boxp=FALSE,type="hist",col="gray")
 title("Page Values vs empirical probability of Revenue")
 
-mosaicplot(Region~Revenue, data=dat)
+mosaicplot(Region~Revenue, data=dat_logged)
 #region seems to be unimportant on its own
-mosaicplot(VisitorType~Revenue, data=dat)
-mosaicplot(TrafficType~Revenue, data=dat)
-mosaicplot(Month~Revenue, data=dat)
+mosaicplot(VisitorType~Revenue, data=dat_logged)
+mosaicplot(TrafficType~Revenue, data=dat_logged)
+mosaicplot(Month~Revenue, data=dat_logged)
 ```
 
 #class priors
 ```{r}
-print(paste("Prior probability of Revenue=TRUE: ", sum(dat$Revenue==TRUE)/nrow(dat)))
-print(paste("Prior probability of Revenue=FALSE: ", sum(dat$Revenue==FALSE)/nrow(dat)))
+print(paste("Prior probability of Revenue=TRUE: ", sum(dat_logged$Revenue==TRUE)/nrow(dat)))
+print(paste("Prior probability of Revenue=FALSE: ", sum(dat_logged$Revenue==FALSE)/nrow(dat)))
 ```
 
 ```{r}
 png(filename="bruteforce3.png", width=4096, height=4096)
 ggpairs(
-  data = dat,
+  data = dat_logged,
   title = "Pairwise Plot",
   columns = colnames(dat)[1:10],
   upper = list(continuous = "points"),
@@ -109,85 +111,52 @@ dev.off()
 
 ```
 
-
 ```{r}
-true_dat <- dat[dat$Revenue == "TRUE", ]
-monthTrafficTableT <- table(true_dat$Month, true_dat$TrafficType)
-ggplot(data = as.data.frame(monthTrafficTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-
-false_dat <- dat[dat$Revenue == "FALSE", ]
-monthTrafficTableF <- table(false_dat$Month, false_dat$TrafficType)
-ggplot(data = as.data.frame(monthTrafficTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-```
-```{r}
-regionTrafficTableT <- table(true_dat$Region, true_dat$TrafficType)
-regionTrafficTableF <- table(false_dat$Region, false_dat$TrafficType)
-
-ggplot(data = as.data.frame(regionTrafficTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-ggplot(data = as.data.frame(regionTrafficTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-```
-```{r}
-regionMonthTableT <- table(true_dat$Region, true_dat$Month)
-regionMonthTableF <- table(false_dat$Region, false_dat$Month)
-
-ggplot(data = as.data.frame(regionMonthTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-ggplot(data = as.data.frame(regionMonthTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-```
-```{r}
-visitorMonthTableT <- table(true_dat$VisitorType, true_dat$Month)
-visitorMonthTableF <- table(false_dat$VisitorType, false_dat$Month)
-
-ggplot(data = as.data.frame(regionMonthTableT), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-ggplot(data = as.data.frame(regionMonthTableF), aes(x = Var1, y = Var2, fill = Freq)) + geom_tile()
-```
-
-
-```{r}
-ggplot(dat, aes(x = PageValues, y = TrafficType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = PageValues, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = PageValues, y = Month, fill = Revenue)) +
+ggplot(dat_logged, aes(x = PageValues, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = PageValues, y = VisitorType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = PageValues, y = VisitorType, fill = Revenue)) +
   geom_density_ridges_gradient()
 
-ggplot(dat, aes(x = BounceRates, y = TrafficType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = BounceRates, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = BounceRates, y = Month, fill = Revenue)) +
+ggplot(dat_logged, aes(x = BounceRates, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = BounceRates, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-
-ggplot(dat, aes(x = ExitRates, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat, aes(x = ExitRates, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat, aes(x = ExitRates, y = VisitorType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = BounceRates, y = VisitorType, fill = Revenue)) +
   geom_density_ridges_gradient()
 
-ggplot(dat, aes(x = ProductRelated, y = TrafficType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = ExitRates, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = ProductRelated, y = Month, fill = Revenue)) +
+ggplot(dat_logged, aes(x = ExitRates, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = ProductRelated, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-
-ggplot(dat, aes(x = ProductRelated_Duration, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat, aes(x = ProductRelated_Duration, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat, aes(x = ProductRelated_Duration, y = VisitorType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = ExitRates, y = VisitorType, fill = Revenue)) +
   geom_density_ridges_gradient()
 
-ggplot(dat, aes(x = SpecialDay, y = TrafficType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = ProductRelated, y = TrafficType, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = SpecialDay, y = Month, fill = Revenue)) +
+ggplot(dat_logged, aes(x = ProductRelated, y = Month, fill = Revenue)) +
   geom_density_ridges_gradient()
-ggplot(dat, aes(x = SpecialDay, y = VisitorType, fill = Revenue)) +
+ggplot(dat_logged, aes(x = ProductRelated, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(dat_logged, aes(x = ProductRelated_Duration, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ProductRelated_Duration, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ProductRelated_Duration, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(dat_logged, aes(x = SpecialDay, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = SpecialDay, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = SpecialDay, y = VisitorType, fill = Revenue)) +
   geom_density_ridges_gradient()
 ```
 
 ```{r}
-dat_numerical <- dat[, -(11:18)]
+dat_numerical <- dat_logged[, -(11:18)]
 dat_pcs <- prcomp(dat_numerical, scale = FALSE)
 dat_pcs_sum <- summary(dat_pcs)
 print(as.data.frame(dat_pcs_sum$importance[, 1:5]))
@@ -199,7 +168,7 @@ dat_pcs_df <- data.frame()
 for(i in 1:10) {
   frame <- data.frame(PC = rep(paste0("PC", i), length(dat_pcs$x[, i])),
              Value = dat_pcs$x[, i])
-  frame <- cbind(dat["Revenue"], frame)
+  frame <- cbind(dat_logged["Revenue"], frame)
   dat_pcs_df <- rbind(dat_pcs_df, frame)
 }
 
@@ -214,7 +183,7 @@ dev.off()
 pcs <- 10
 
 dat_pcs_pair_df <- data.frame(dat_pcs$x[, 1:10])
-dat_pcs_pair_df <- cbind(dat_pcs_pair_df, dat["Revenue"])
+dat_pcs_pair_df <- cbind(dat_pcs_pair_df, dat_logged["Revenue"])
 
 head(dat_pcs_pair_df)
 png(filename="bruteforce.png", width=4096, height=4096)
@@ -266,10 +235,10 @@ table(dat_pcs_cluster_df)
 
 
 ```{r}
-train_size <- floor(0.75 * nrow(dat))
-train_ind <- sample(seq_len(nrow(dat)), size = train_size)
-train <- dat[train_ind, ]
-test <- dat[-train_ind, ]
+train_size <- floor(0.75 * nrow(dat_logged))
+train_ind <- sample(seq_len(nrow(dat_logged)), size = train_size)
+train <- dat_logged[train_ind, ]
+test <- dat_logged[-train_ind, ]
 
 train$Revenue <- as.factor(train$Revenue)
 train$Revenue <- factor(train$Revenue, labels = make.names(levels(train$Revenue)))
@@ -285,19 +254,7 @@ adopted_train[, 1:10] <- train_pcs$x
 colnames(adopted_train)[1:10] <- paste0("PC", 1:10)
 
 head(adopted_train)
-```
-
-```{r}
-png(filename="bruteforce4.png", width=4096, height=4096)
-ggpairs(
-  data = adopted_train,
-  title = "Pairwise PC Plot",
-  columns = 1:10,
-  upper = list(continuous = "points"),
-  mapping = ggplot2::aes(color = Revenue),
-  legend = 1
-)
-dev.off()
+head(train)
 ```
 
 
@@ -312,9 +269,9 @@ head(adopted_test)
 
 ```{r}
 # Dumy code categorical predictor variables
-train_mat <- model.matrix(Revenue~., adopted_train)[,-1]
+train_mat <- model.matrix(Revenue~., train)[,-1]
 # Convert the outcome (class) to a numerical variable
-revenue_vec <- ifelse(adopted_train$Revenue == "TRUE.", 1, 0)
+revenue_vec <- ifelse(train$Revenue == "TRUE.", 1, 0)
 ```
 
 ```{r}
@@ -323,46 +280,42 @@ plot(cv.lasso)
 ```
 ```{r}
 coef(cv.lasso, cv.lasso$lambda.1se)
-coef(cv.lasso, cv.lasso$lambda.min)
 ```
 
 
 ```{r}
 train.control <- trainControl(method = "cv", number = 10)
-train_pca <- adopted_train[, c(1:10, 18)]
-test_pca <- adopted_test[, c(1:10, 18)]
+train_numerical <- train[, c(1:10, 18)]
+test_numerical <- test[, c(1:10, 18)]
 ```
 
 ```{r}
-train_filtered <- train_pca[, c(1, 3, 5, 11)]
+train_filtered <- train_numerical[, c(8, 9, 11)]
 train_numerical <- as.data.frame(train_filtered)
-train_filtered$May <- ifelse(adopted_train$Month == "May", 1, 0)
-train_filtered$Nov <- ifelse(adopted_train$Month == "Nov", 1, 0)
-train_filtered$Traffic8 <- ifelse(adopted_train$TrafficType == "X8", 1, 0)
-train_filtered$Traffic16 <- ifelse(adopted_train$TrafficType == "X16", 1, 0)
-train_filtered$Returning <- ifelse(adopted_train$VisitorType == "Returning_Visitor", 1, 0)
+train_filtered$May <- ifelse(train$Month == "May", 1, 0)
+train_filtered$Nov <- ifelse(train$Month == "Nov", 1, 0)
+train_filtered$Traffic2 <- ifelse(train$TrafficType == "X2", 1, 0)
+train_filtered$Returning <- ifelse(train$VisitorType == "Returning_Visitor", 1, 0)
 
-test_filtered <- test_pca[, c(1, 3, 5, 11)]
-test_filtered$May <- ifelse(adopted_test$Month == "May", 1, 0)
-test_filtered$Nov <- ifelse(adopted_test$Month == "Nov", 1, 0)
-test_filtered$Traffic8 <- ifelse(adopted_test$TrafficType == "X8", 1, 0)
-test_filtered$Traffic16 <- ifelse(adopted_test$TrafficType == "X16", 1, 0)
-test_filtered$Returning <- ifelse(adopted_test$VisitorType == "Returning_Visitor", 1, 0)
+test_filtered <- test_numerical[, c("ExitRates", "PageValues", "Revenue")]
+test_filtered$May <- ifelse(test$Month == "May", 1, 0)
+test_filtered$Nov <- ifelse(test$Month == "Nov", 1, 0)
+test_filtered$Traffic2 <- ifelse(test$TrafficType == "X2", 1, 0)
+test_filtered$Returning <- ifelse(test$VisitorType == "Returning_Visitor", 1, 0)
 ```
 
 
 ```{r}
-tunegrid=data.frame(C=c(0.001, 0.01, 0.25, 0.5, 1, 5, 10))
+tunegrid=data.frame(C=c(seq(0.01, 2, length = 20), 10))
 # Train the model
 model.cvsvm <- train(Revenue~., data = train_numerical, method = "svmLinear",
-               trControl = train.control, tuneGrid = tunegrid, metric = "Kappa")
+               trControl = train.control, tuneGrid = tunegrid, 
+               metric = "Kappa")
 # Summarize the results
 print(model.cvsvm)
-#SVM WIP
-#model_svm = svm(Revenue~., data=train_pca, cost = 0.5, kernel = "linear")
-#print(model_svm)
 
-predict_svm <- predict(model.cvsvm, test_filtered)
+
+predict_svm <- predict(model.cvsvm, test)
 cm.svm <-
   confusionMatrix(
     factor(predict_svm),
@@ -372,39 +325,6 @@ cm.svm <-
   )
 cm.svm
 cm.svm$byClass
-```
-
-```{r}
-model.knn <- train(Revenue~., data = train_filtered, method = "knn", trControl = train.control, metric = "Kappa")
-
-print(model.knn)
-
-predict_knn <- predict(model.knn, test_filtered)
-cm.knn <-
-  confusionMatrix(
-    factor(predict_knn),
-    factor(test_filtered$Revenue),
-    dnn = c("Prediction", "Label"),
-    positive="TRUE."
-  )
-cm.knn
-cm.knn$byClass
-```
-```{r}
-model.lda <- lda(Revenue~., data = train_numerical)
-
-print(model.lda)
-
-predict_lda <- predict(model.lda, test_filtered)$class
-cm.lda <-
-  confusionMatrix(
-    factor(predict_lda),
-    factor(test_filtered$Revenue),
-    dnn = c("Prediction", "Label"),
-    positive="TRUE."
-  )
-cm.lda
-cm.lda$byClass
 ```
 
 
@@ -433,7 +353,7 @@ print(model.qda)
 predict_qda <- predict(model.qda, test_filtered)$class
 cm.qda <-
   confusionMatrix(
-    factor(predict_tree),
+    factor(predict_qda),
     factor(test_filtered$Revenue),
     dnn = c("Prediction", "Label"),
     positive="TRUE."
@@ -459,5 +379,87 @@ cm.glm <-
   )
 cm.glm
 cm.glm$byClass
+```
+
+```{r}
+# Dumy code categorical predictor variables
+train_mat_pc <- model.matrix(Revenue~., adopted_train)[,-1]
+cv.lasso.pc <- cv.glmnet(train_mat_pc, revenue_vec, alpha = 1, family = "binomial")
+plot(cv.lasso.pc)
+```
+
+
+```{r}
+coef(cv.lasso.pc, cv.lasso.pc$lambda.1se)
+```
+
+```{r}
+train_numerical_pc <- adopted_train[, c(1:10, 18)]
+test_numerical_pc <- adopted_test[, c(1:10, 18)]
+train_filtered_pc <- train_numerical_pc[, c(1, 3, 5, 11)]
+train_numerical_pc <- as.data.frame(train_filtered_pc)
+train_filtered_pc$May <- ifelse(adopted_train$Month == "May", 1, 0)
+train_filtered_pc$Nov <- ifelse(adopted_train$Month == "Nov", 1, 0)
+train_filtered_pc$Returning <- ifelse(adopted_train$VisitorType == "Returning_Visitor", 1, 0)
+
+test_filtered_pc <- test_numerical_pc[, c(1, 3, 5, 11)]
+test_filtered_pc$May <- ifelse(adopted_test$Month == "May", 1, 0)
+test_filtered_pc$Nov <- ifelse(adopted_test$Month == "Nov", 1, 0)
+test_filtered_pc$Returning <- ifelse(adopted_test$VisitorType == "Returning_Visitor", 1, 0)
+```
+
+```{r}
+tunegrid=data.frame(C=c(seq(0.01, 2, length = 20), 10))
+# Train the model
+model.cvsvm <- train(Revenue~., data = train_numerical_pc, method = "svmLinear",
+               trControl = train.control, tuneGrid = tunegrid, 
+               metric = "Kappa")
+# Summarize the results
+print(model.cvsvm)
+
+
+predict_svm <- predict(model.cvsvm, adopted_test)
+cm.svm <-
+  confusionMatrix(
+    factor(predict_svm),
+    factor(test_filtered_pc$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.svm
+cm.svm$byClass
+```
+
+```{r}
+model.tree <- train(Revenue~., data = train_filtered_pc, method = "rpart", trControl = train.control, metric = "Kappa")
+
+print(model.tree)
+
+predict_tree <- predict(model.tree, test_filtered_pc)
+cm.tree <-
+  confusionMatrix(
+    factor(predict_tree),
+    factor(test_filtered_pc$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.tree
+cm.tree$byClass
+```
+
+```{r}
+model.qda <- qda(Revenue~., data = train_numerical_pc)
+print(model.qda)
+
+predict_qda <- predict(model.qda, test_filtered_pc)$class
+cm.qda <-
+  confusionMatrix(
+    factor(predict_qda),
+    factor(test_filtered_pc$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.qda
+cm.qda$byClass
 ```
 
