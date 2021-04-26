@@ -1,0 +1,302 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r, echo=T, results="hide"}
+#libraries
+library(MASS)
+library(e1071)
+library(caret)
+library(rpart)
+library(popbio)
+library(ggplot2)
+library(GGally)
+library(ggridges)
+library(MLmetrics)
+library(ipred)
+```
+
+
+```{r}
+dat <- read.csv("./online_shoppers_intention.csv")
+dat$OperatingSystems <- as.factor(dat$OperatingSystems)
+dat$Browser <- as.factor(dat$Browser)
+dat$Region <- as.factor(dat$Region)
+dat$TrafficType <- as.factor(dat$TrafficType)
+dat$Weekend <- as.factor(dat$Weekend)
+dat$VisitorType <- as.factor(dat$VisitorType)
+
+
+dat$OperatingSystems <- factor(dat$OperatingSystems, labels = make.names(levels(dat$OperatingSystems)))
+dat$Browser <- factor(dat$Browser, labels = make.names(levels(dat$Browser)))
+dat$Region <- factor(dat$Region, labels = make.names(levels(dat$Region)))
+dat$TrafficType <- factor(dat$TrafficType, labels = make.names(levels(dat$TrafficType)))
+dat$Weekend <- factor(dat$Weekend, labels = make.names(levels(dat$Weekend)))
+dat$VisitorType <- factor(dat$VisitorType, labels = make.names(levels(dat$VisitorType)))
+
+
+set.seed(100)
+```
+
+```{r}
+#factor TrafficType has a level X17 in test but not train data, delete those rows from test TODO
+dat = dat[dat$TrafficType != "X17",]
+
+```
+
+
+```{r}
+oversample_df = function(df) {
+  true_multiply_ratio = nrow(df) / sum(as.logical(df$Revenue))
+  true_needed_rows = (true_multiply_ratio - 1) * sum(as.logical(df$Revenue))
+  true_df = df[df$Revenue == TRUE, ]
+  balanced_df = df
+  
+  print("sneed")
+  print(true_df[sample(1:nrow(true_df),1),])
+  for (i in c(1:true_needed_rows)) {
+    balanced_df = rbind(balanced_df, true_df[sample(1:nrow(true_df),1),])
+  }
+  
+  
+  return(balanced_df)
+}
+```
+
+
+```{r}
+#transformations
+for (i in c(1:10)) {
+  dat[,i] = log(dat[,i]+1)
+}
+```
+
+```{r}
+train_size <- floor(0.75 * nrow(dat))
+train_ind <- sample(seq_len(nrow(dat)), size = train_size)
+train <- dat[train_ind, ]
+test <- dat[-train_ind, ]
+
+
+
+```
+
+
+```{r}
+
+pca = prcomp(train[,1:10],scale=FALSE)
+train_pca = pca$x
+#projecting testing data onto reduced pcs
+test_pca = predict(pca, test[,1:10])
+
+```
+
+```{r}
+#remove largest PC 
+train_pca = as.data.frame(train_pca[,2:ncol(train_pca)])
+test_pca = as.data.frame(test_pca[,2:ncol(test_pca)])
+```
+
+
+```{r}
+for (i in c(1:ncol(train_pca))) {
+  hist(train_pca[,i])
+}
+```
+
+```{r}
+#add Revenue, categories back
+#train_pca$Revenue = train$Revenue
+#test_pca$Revenue = test$Revenue
+
+#train_pca[,10:ncol(train)-1] = train[,11:ncol(train)]
+#test_pca[,10:ncol(test)-1] = test[,11:ncol(test)]
+
+train_pca$Month = train$Month
+test_pca$Month = test$Month
+train_pca$OperatingSystems = train$OperatingSystems
+test_pca$OperatingSystems = test$OperatingSystems
+train_pca$Browser = train$Browser
+test_pca$Browser = test$Browser
+train_pca$Region = train$Region
+test_pca$Region = test$Region
+#train_pca$TrafficType = train$TrafficType
+#test_pca$TrafficType = test$TrafficType
+train_pca$VisitorType = train$VisitorType
+test_pca$VisitorType = test$VisitorType
+train_pca$Weekend = train$Weekend
+test_pca$Weekend = test$Weekend
+train_pca$Revenue = train$Revenue
+test_pca$Revenue = test$Revenue
+#
+#test_pca$TrafficType = test_pca$TrafficType[,drop=TRUE]
+#train_pca$TrafficType = droplevels(train_pca$TrafficType)
+```
+
+RBF SVM
+
+```{r}
+train_numeric = train[,1:10]
+train_numeric$Revenue = train$Revenue
+test_numeric = test[,1:10]
+test_numeric$Revenue = test$Revenue
+svm_test = svm(factor(Revenue) ~ ., data=train_numeric, method="C-classification", kernel="linear")
+svm_test_predict = predict(svm_test,test_numeric)
+
+confusionMatrix(data=factor(as.logical(svm_test_predict)), reference=factor(as.logical(test$Revenue)), positive="TRUE")
+
+
+confusionMatrix(data=factor(as.logical(svm_test_predict)), reference=factor(as.logical(test$Revenue)), positive="TRUE")$byClass
+
+```
+
+```{r}
+#remove Revenue
+
+#tune_out <- tune.svm(x=train_numeric[,1:ncol(train_numeric)-1],y=train$Revenue,gamma=10^(-3:3),cost=c(0.01,0.1,1,10,100,1000),kernel="radial")
+tune_out <- tune.svm(factor(Revenue)~.,data=train_numeric,gamma=10^(-3:3),cost=10^(-2:2),kernel="radial")
+tune_out$best.parameters$cost
+tune_out$best.parameters$gamma
+
+
+svm_optimized = svm(factor(Revenue) ~ ., data=train_numeric, method="C-classification", kernel="radial", cost=tune_out$best.parameters$cost, gamma=tune_out$best.parameters$gamma)
+svm_optimized_predict = predict(svm_optimized,test_numeric)
+
+confusionMatrix(data=factor(as.logical(svm_optimized_predict)), reference=factor(as.logical(test$Revenue)), positive="TRUE")
+
+
+confusionMatrix(data=factor(as.logical(svm_optimized_predict)), reference=factor(as.logical(test$Revenue)), positive="TRUE")$byClass
+
+```
+
+
+
+LOGIT
+
+```{r}
+#log_model = glm(factor(Revenue)~Administrative+Administrative_Duration+Informational+Informational_Duration+ProductRelated+ProductRelated_Duration+BounceRates+ExitRates+PageValues+SpecialDay+)
+
+#TODO include traffictype
+log_model = glm(factor(Revenue)~., data=train_pca, family="binomial")
+summary(log_model)
+#gives log-odds, greater than 0=True, less than 0=False
+log_predictions = as.integer(as.vector(predict.glm(log_model, newdata=test_pca) >= 0))
+test_true = as.integer(test_pca$Revenue)
+```
+```{r}
+F1_Score(y_true=test_true, y_pred=log_predictions)
+```
+
+
+```{r}
+confusionMatrix(data=factor(as.logical(log_predictions)), reference=factor(as.logical(test_true)), positive="TRUE")$byClass
+```
+
+
+```{r}
+train_pca_numeric = train_pca[,1:9]
+test_pca_numeric = test_pca[,1:9]
+train_pca_numeric$Revenue = train_pca$Revenue
+test_pca_numeric$Revenue = test_pca$Revenue
+
+qmod = qda(factor(Revenue)~., data=train_pca_numeric)
+qda_posteriors = predict(qmod, newdata=test_pca_numeric)$posterior
+#ps[,1] is posterior probability of FALSE, ps[,2] is TRUE
+qda_predictions = as.integer(qda_posteriors[,1] <= qda_posteriors[,2])
+qda_true = test_pca_numeric$Revenue
+
+
+```
+
+
+```{r}
+confusionMatrix(data=factor(as.logical(qda_predictions)), reference=factor(as.logical(qda_true)), positive="TRUE")
+
+confusionMatrix(data=factor(as.logical(qda_predictions)), reference=factor(as.logical(qda_true)), positive="TRUE")$byClass
+```
+
+DECISION TREE
+
+```{r}
+train_category = oversample_df(train[,11:ncol(train)])
+test_category = test[,11:ncol(train)]
+```
+
+```{r}
+
+#model_category = rpart(factor(Revenue) ~ ., data=oversampled_train_category)
+model_category = glm(factor(Revenue)~., data=train_category, family="binomial")
+
+category_logits = predict.glm(model_category, test_category)
+category_predictions = (category_logits >= 0)
+
+```
+
+```{r}
+confusionMatrix(data=factor(as.logical(category_predictions)), reference=factor(as.logical(test_category$Revenue)), positive="TRUE")
+
+
+confusionMatrix(data=factor(as.logical(category_predictions)), reference=factor(as.logical(test_category$Revenue)), positive="TRUE")$byClass
+```
+
+BAGGING
+
+```{r}
+
+
+category_probabilities = exp(category_logits)/(1+exp(category_logits))
+
+bag_predictions = (((category_probabilities^2) + qda_posteriors[,2]*0.8) >= 0.5)
+bag_true = test$Revenue
+
+confusionMatrix(data=factor(as.logical(bag_predictions)), reference=factor(as.logical(bag_true)), positive="TRUE")
+
+confusionMatrix(data=factor(as.logical(bag_predictions)), reference=factor(as.logical(bag_true)), positive="TRUE")$byClass
+
+```
+
+
+MLP
+
+
+```{r}
+library(RSNNS)
+```
+os_dat = oversample_df(dat)
+os_train_size <- floor(0.75 * nrow(os_dat))
+os_train_ind <- sample(seq_len(nrow(os_dat)), size = os_train_size)
+os_train <- dat[os_train_ind, ]
+os_test <- dat[-os_train_ind, ]
+```{r}
+library(ROSE)
+os_train = train
+os_test = test
+os_train$Revenue =as.integer(os_train$Revenue)
+os_test$Revenue = as.integer(os_test$Revenue)
+
+nval = 2*nrow(os_train)-sum(os_train$Revenue)
+os_train = ovun.sample(factor(Revenue) ~ ., data = os_train, method = "over",N=nval)$data
+
+#NA rows for whatever the chuck reason
+```
+
+
+```{r}
+
+mlp_train = os_train[,1:10]
+mlp_train_y = os_train$Revenue
+#NOTE: test isnt oversampled
+nval2 = 2*nrow(test)-sum(test$Revenue)
+mlp_test = ovun.sample(factor(Revenue) ~ ., data = os_test, method = "over",N=nval2)$data
+mlp_test_y = mlp_test$Revenue
+mlp_test = mlp_test[,1:10]
+
+mlp_model = mlp(mlp_train, as.integer(mlp_train_y), size=10, maxit=100)
+mlp_predictions = predict(mlp_model, mlp_test) >= 0.5
+
+caret::confusionMatrix(data=factor(as.logical(mlp_predictions)), reference=factor(as.logical(mlp_test_y)), positive="TRUE")
+
+caret::confusionMatrix(data=factor(as.logical(mlp_predictions)), reference=factor(as.logical(mlp_test_y)), positive="TRUE")$byClass
+```
