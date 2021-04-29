@@ -19,6 +19,8 @@ library(cluster)    # clustering algorithms
 library(factoextra) # clustering algorithms & visualization
 library(glmnet)
 library(FactoMineR)
+library(GSAR)
+library(purrr)
 registerDoMC(cores = 11) 
 ```
 
@@ -96,6 +98,7 @@ mosaicplot(Month~Revenue, data=dat_logged)
 print(paste("Prior probability of Revenue=TRUE: ", sum(dat_logged$Revenue==TRUE)/nrow(dat)))
 print(paste("Prior probability of Revenue=FALSE: ", sum(dat_logged$Revenue==FALSE)/nrow(dat)))
 ```
+
 
 ```{r}
 png(filename="bruteforce3.png", width=4096, height=4096)
@@ -304,6 +307,29 @@ test_filtered$Traffic2 <- ifelse(test$TrafficType == "X2", 1, 0)
 test_filtered$Returning <- ifelse(test$VisitorType == "Returning_Visitor", 1, 0)
 ```
 
+```{r}
+model.knn <- train(Revenue~., data = train_numerical, method = "knn", trControl = train.control, metric = "Kappa")
+
+print(model.knn)
+
+predict_knn <- predict(model.knn, test_filtered)
+cm.knn <-
+  confusionMatrix(
+    factor(predict_knn),
+    factor(test_filtered$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.knn
+cm.knn$byClass
+
+ggplot(as.data.frame(cm.knn$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, Features")
+```
+
 
 ```{r}
 tunegrid=data.frame(C=c(seq(0.01, 2, length = 20), 10))
@@ -325,6 +351,12 @@ cm.svm <-
   )
 cm.svm
 cm.svm$byClass
+
+ggplot(as.data.frame(cm.svm$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, Features")
 ```
 
 
@@ -343,14 +375,20 @@ cm.tree <-
   )
 cm.tree
 cm.tree$byClass
+
+ggplot(as.data.frame(cm.tree$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, Features")
 ```
 
 
 ```{r}
-model.qda <- qda(Revenue~., data = train_numerical)
+model.qda <- train(Revenue~., data = train_numerical, method = "qda", trControl = train.control, metric = "Kappa")
 print(model.qda)
 
-predict_qda <- predict(model.qda, test_filtered)$class
+predict_qda <- predict(model.qda, test_filtered)
 cm.qda <-
   confusionMatrix(
     factor(predict_qda),
@@ -360,6 +398,12 @@ cm.qda <-
   )
 cm.qda
 cm.qda$byClass
+
+ggplot(as.data.frame(cm.qda$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, Features")
 ```
 
 ```{r}
@@ -379,6 +423,12 @@ cm.glm <-
   )
 cm.glm
 cm.glm$byClass
+
+ggplot(as.data.frame(cm.glm$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, Features")
 ```
 
 ```{r}
@@ -409,6 +459,29 @@ test_filtered_pc$Returning <- ifelse(adopted_test$VisitorType == "Returning_Visi
 ```
 
 ```{r}
+model.knn <- train(Revenue~., data = train_numerical_pc, method = "knn", trControl = train.control, metric = "Kappa")
+
+print(model.knn)
+
+predict_knn <- predict(model.knn, test_filtered_pc)
+cm.knn <-
+  confusionMatrix(
+    factor(predict_knn),
+    factor(test_filtered_pc$Revenue),
+    dnn = c("Prediction", "Label"),
+    positive="TRUE."
+  )
+cm.knn
+cm.knn$byClass
+
+ggplot(as.data.frame(cm.knn$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, PCA")
+```
+
+```{r}
 tunegrid=data.frame(C=c(seq(0.01, 2, length = 20), 10))
 # Train the model
 model.cvsvm <- train(Revenue~., data = train_numerical_pc, method = "svmLinear",
@@ -428,6 +501,12 @@ cm.svm <-
   )
 cm.svm
 cm.svm$byClass
+
+ggplot(as.data.frame(cm.svm$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, PCA")
 ```
 
 ```{r}
@@ -445,13 +524,19 @@ cm.tree <-
   )
 cm.tree
 cm.tree$byClass
+
+ggplot(as.data.frame(cm.tree$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Label", y = "Prediction") + ggtitle("Confusion Matrix")
 ```
 
 ```{r}
-model.qda <- qda(Revenue~., data = train_numerical_pc)
+model.qda <- train(Revenue~., data = train_numerical_pc, method = "qda", trControl = train.control, metric = "Kappa")
 print(model.qda)
 
-predict_qda <- predict(model.qda, test_filtered_pc)$class
+predict_qda <- predict(model.qda, test_filtered_pc)
 cm.qda <-
   confusionMatrix(
     factor(predict_qda),
@@ -461,5 +546,11 @@ cm.qda <-
   )
 cm.qda
 cm.qda$byClass
+
+ggplot(as.data.frame(cm.qda$table),
+         aes(Prediction, sort(Label, decreasing = T), fill = Freq)) + 
+  geom_tile() + geom_text(aes(label = Freq)) + 
+  scale_fill_gradient(low = "white") + 
+  labs(x = "Prediction", y = "Label") + ggtitle("Confusion Matrix, PCA")
 ```
 
