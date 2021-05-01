@@ -374,7 +374,7 @@ print(model.cvsvm)
 ```
 
 ```{r}
-predict_svm <- predict(model.cvsvm, test)
+predict_svm <- predict(model.cvsvm, test_filtered)
 cm.svm <-
   confusionMatrix(
     factor(predict_svm),
