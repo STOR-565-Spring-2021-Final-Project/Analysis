@@ -115,50 +115,6 @@ dev.off()
 ```
 
 ```{r}
-ggplot(dat_logged, aes(x = PageValues, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = PageValues, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = PageValues, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-
-ggplot(dat_logged, aes(x = BounceRates, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = BounceRates, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = BounceRates, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-
-ggplot(dat_logged, aes(x = ExitRates, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = ExitRates, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = ExitRates, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-
-ggplot(dat_logged, aes(x = ProductRelated, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = ProductRelated, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = ProductRelated, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-
-ggplot(dat_logged, aes(x = ProductRelated_Duration, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = ProductRelated_Duration, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = ProductRelated_Duration, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-
-ggplot(dat_logged, aes(x = SpecialDay, y = TrafficType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = SpecialDay, y = Month, fill = Revenue)) +
-  geom_density_ridges_gradient()
-ggplot(dat_logged, aes(x = SpecialDay, y = VisitorType, fill = Revenue)) +
-  geom_density_ridges_gradient()
-```
-
-```{r}
 dat_numerical <- dat_logged[, -(11:18)]
 dat_pcs <- prcomp(dat_numerical, scale = FALSE)
 dat_pcs_sum <- summary(dat_pcs)
@@ -271,8 +227,52 @@ head(adopted_test)
 ```
 
 ```{r}
+ggplot(dat_logged, aes(x = PageValues, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = PageValues, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = PageValues, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(dat_logged, aes(x = BounceRates, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = BounceRates, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = BounceRates, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(dat_logged, aes(x = ExitRates, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ExitRates, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ExitRates, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(dat_logged, aes(x = ProductRelated, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ProductRelated, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ProductRelated, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(dat_logged, aes(x = ProductRelated_Duration, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ProductRelated_Duration, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = ProductRelated_Duration, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(dat_logged, aes(x = SpecialDay, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = SpecialDay, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(dat_logged, aes(x = SpecialDay, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+```
+
+```{r}
 # Dumy code categorical predictor variables
-train_mat <- model.matrix(Revenue~., train)[,-1]
+train_mat <- model.matrix(Revenue~.+ ProductRelated*Month + PageValues*Month + ProductRelated*VisitorType + PageValues*VisitorType, train)[,-1]
 # Convert the outcome (class) to a numerical variable
 revenue_vec <- ifelse(train$Revenue == "TRUE.", 1, 0)
 ```
@@ -293,19 +293,25 @@ test_numerical <- test[, c(1:10, 18)]
 ```
 
 ```{r}
-train_filtered <- train_numerical[, c(8, 9, 11)]
+train_filtered <- train_numerical[, c(5, 8, 9, 11)]
 train_numerical <- as.data.frame(train_filtered)
 train_filtered$May <- ifelse(train$Month == "May", 1, 0)
 train_filtered$Nov <- ifelse(train$Month == "Nov", 1, 0)
-train_filtered$Traffic2 <- ifelse(train$TrafficType == "X2", 1, 0)
 train_filtered$Returning <- ifelse(train$VisitorType == "Returning_Visitor", 1, 0)
+train_filtered$PageValues.May <- train_filtered$PageValues * train_filtered$May
+train_filtered$ProductRelated.Nov <- train_filtered$ProductRelated * train_filtered$Nov
+train_numerical$PageValues.May <- train_filtered$PageValues * train_filtered$May
+train_numerical$ProductRelated.Nov <- train_filtered$ProductRelated * train_filtered$Nov
 
-test_filtered <- test_numerical[, c("ExitRates", "PageValues", "Revenue")]
+test_filtered <- test_numerical[, c(5, 8, 9, 11)]
 test_filtered$May <- ifelse(test$Month == "May", 1, 0)
 test_filtered$Nov <- ifelse(test$Month == "Nov", 1, 0)
-test_filtered$Traffic2 <- ifelse(test$TrafficType == "X2", 1, 0)
 test_filtered$Returning <- ifelse(test$VisitorType == "Returning_Visitor", 1, 0)
+test_filtered$PageValues.May <- test_filtered$PageValues * test_filtered$May
+test_filtered$ProductRelated.Nov <- test_filtered$ProductRelated * test_filtered$Nov
 ```
+
+
 
 ```{r}
 model.knn <- train(Revenue~., data = train_numerical, method = "knn", trControl = train.control, metric = "Kappa")
@@ -344,7 +350,7 @@ print(model.cvsvm)
 ```
 
 ```{r}
-predict_svm <- predict(model.cvsvm, test)
+predict_svm <- predict(model.cvsvm, test_filtered)
 cm.svm <-
   confusionMatrix(
     factor(predict_svm),
@@ -472,10 +478,57 @@ ggplot(as.data.frame(cm.glm$table),
   labs(x = "Label", y = "Prediction") + ggtitle("Confusion Matrix, Features")
 ```
 
+```{r}
+ggplot(adopted_train, aes(x = PC1, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC1, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC1, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(adopted_train, aes(x = PC2, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC2, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC2, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(adopted_train, aes(x = PC3, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC3, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC3, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(adopted_train, aes(x = PC4, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC4, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC4, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(adopted_train, aes(x = PC5, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC5, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC5, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+
+ggplot(adopted_train, aes(x = PC6, y = TrafficType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC6, y = Month, fill = Revenue)) +
+  geom_density_ridges_gradient()
+ggplot(adopted_train, aes(x = PC6, y = VisitorType, fill = Revenue)) +
+  geom_density_ridges_gradient()
+```
+
 
 ```{r}
 # Dumy code categorical predictor variables
-train_mat_pc <- model.matrix(Revenue~., adopted_train)[,-1]
+train_mat_pc <- model.matrix(Revenue~.+PC1*TrafficType+PC1*Month+PC1*VisitorType
+                             +PC3*TrafficType+PC3*Month+PC3*VisitorType
+                             +PC5*TrafficType+PC5*Month+PC5*VisitorType
+                             +PC6*TrafficType+PC6*Month+PC6*VisitorType, adopted_train)[,-1]
 cv.lasso.pc <- cv.glmnet(train_mat_pc, revenue_vec, alpha = 1, family = "binomial")
 plot(cv.lasso.pc)
 ```
@@ -486,18 +539,33 @@ coef(cv.lasso.pc, cv.lasso.pc$lambda.1se)
 ```
 
 ```{r}
+ggplot(data = adopted_train, aes(fill = Revenue)) + aes(x = PC1 * (Month == "Nov")) + geom_boxplot() +
+  xlab("PC Value") + ggtitle("PC Score Distributions")
+ggplot(data = adopted_train, aes(fill = Revenue)) + aes(x = PC6 * (Month == "Nov")) + geom_boxplot() +
+  xlab("PC Value") + ggtitle("PC Score Distributions")
+```
+
+
+```{r}
 train_numerical_pc <- adopted_train[, c(1:10, 18)]
 test_numerical_pc <- adopted_test[, c(1:10, 18)]
-train_filtered_pc <- train_numerical_pc[, c(1, 3, 5, 11)]
+train_filtered_pc <- train_numerical_pc[, c(1, 3, 5, 6, 11)]
 train_numerical_pc <- as.data.frame(train_filtered_pc)
 train_filtered_pc$May <- ifelse(adopted_train$Month == "May", 1, 0)
 train_filtered_pc$Nov <- ifelse(adopted_train$Month == "Nov", 1, 0)
 train_filtered_pc$Returning <- ifelse(adopted_train$VisitorType == "Returning_Visitor", 1, 0)
+train_filtered_pc$PC1.Nov <- train_filtered_pc$PC1 * train_filtered_pc$Nov
+train_filtered_pc$PC6.Nov <- train_filtered_pc$PC6 * train_filtered_pc$Nov
+train_numerical_pc$PC1.Nov <- train_filtered_pc$PC1 * train_filtered_pc$Nov
+train_numerical_pc$PC6.Nov <- train_filtered_pc$PC6 * train_filtered_pc$Nov
 
-test_filtered_pc <- test_numerical_pc[, c(1, 3, 5, 11)]
+
+test_filtered_pc <- test_numerical_pc[, c(1, 3, 5, 6, 11)]
 test_filtered_pc$May <- ifelse(adopted_test$Month == "May", 1, 0)
 test_filtered_pc$Nov <- ifelse(adopted_test$Month == "Nov", 1, 0)
 test_filtered_pc$Returning <- ifelse(adopted_test$VisitorType == "Returning_Visitor", 1, 0)
+test_filtered_pc$PC1.Nov <- test_filtered_pc$PC1 * test_filtered_pc$Nov
+test_filtered_pc$PC6.Nov <- test_filtered_pc$PC6 * test_filtered_pc$Nov
 ```
 
 ```{r}
@@ -540,7 +608,7 @@ print(model.cvsvm)
 ```
 
 ```{r}
-predict_svm <- predict(model.cvsvm, adopted_test)
+predict_svm <- predict(model.cvsvm, test_filtered_pc)
 cm.svm <-
   confusionMatrix(
     factor(predict_svm),
@@ -559,7 +627,7 @@ ggplot(as.data.frame(cm.svm$table),
 ```
 
 
-```{r eval=F}
+```{r}
 tunegrid=expand.grid(C=c(seq(0.01, 2, length = 20), 10), sigma=c(seq(0.01, 2, length = 20), 10))
 # Train the model
 model.cvsvm <- train(Revenue~., data = train_filtered_pc, method = "svmRadial",
@@ -569,7 +637,7 @@ model.cvsvm <- train(Revenue~., data = train_filtered_pc, method = "svmRadial",
 print(model.cvsvm)
 ```
 
-```{r eval=F}
+```{r}
 predict_svm <- predict(model.cvsvm, test_filtered_pc)
 cm.svm <-
   confusionMatrix(
